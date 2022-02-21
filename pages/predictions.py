@@ -10,19 +10,17 @@ import pandas as pd
 # Imports from this application
 from app import app
 
-
+# Import the model from local machine (also available on Colab)
 from joblib import load
 model_xgb = load('assets/model_xgb.joblib')
 print('pipeline loaded')
 
-
 # 1 column layout
 # https://dash-bootstrap-components.opensource.faculty.ai/l/components/layout
-
-
-
+# This will be the section that the user uses to input their ideal criteria
 column1 = dbc.Col(
     [
+        # Column title, intro text, and format
         dcc.Markdown(
             """
 
@@ -34,16 +32,7 @@ column1 = dbc.Col(
             style={'textAlign': 'center'}
         ),
 
-
-        # column1 = dbc.Col(
-
-
-        #         html.H2('Prediction Criteria',
-        #                 className='mb-5',
-        #                 style={'textAlign': 'center'}),
-
-        # ),
-
+        # Accomodation type dropdown
         dcc.Markdown('#### Accomodation Type'),
         dcc.Dropdown(
             id='room_type',
@@ -56,6 +45,8 @@ column1 = dbc.Col(
             className='mb-5'
         ),
 
+        # Rating slider
+        # Including everything 4 stars and under together
         dcc.Markdown('#### Rating'),
         dcc.Slider(
             id='review_scores_rating',
@@ -72,6 +63,8 @@ column1 = dbc.Col(
             className='mb-5'
         ),
 
+        # Number of guests slider
+        # Inclduing all guest count over 7 together
         dcc.Markdown('#### Number of Guests'),
         dcc.Slider(
             id='guests_included',
@@ -90,6 +83,8 @@ column1 = dbc.Col(
 
         ),
 
+        # Number of beds slider
+        # Inclduing all bed counts over 7 together
         dcc.Markdown('#### Beds'),
         dcc.Slider(
             id='beds',
@@ -106,18 +101,7 @@ column1 = dbc.Col(
             className='mb-5'
         ),
 
-        # dcc.Markdown('#### Superhost?'),
-        # dcc.Slider(
-        #     id='host_is_superhost',
-        #     min=0,
-        #     max=1,
-        #     step=1,
-        #     marks={0: 'Yes',
-        #            1: 'No'},
-        #     value=1,
-        #     className='mb-5'
-        # ),
-
+        # Super Host slider
         dcc.Markdown('#### Super Host?'),
         dcc.Dropdown(
             id='host_is_superhost',
@@ -130,18 +114,7 @@ column1 = dbc.Col(
             className='mb-5'
         ),
 
-        # dcc.Markdown('#### Instant Book?'),
-        # dcc.Slider(
-        #     id='instant_bookable',
-        #     min=0,
-        #     max=1,
-        #     step=1,
-        #     marks={0: 'Yes',
-        #            1: 'No'},
-        #     value=1,
-        #     className='mb-5'
-        # )
-
+        # Instant Book dropdown
         dcc.Markdown('#### Instant Book?'),
         dcc.Dropdown(
             id='instant_bookable',
@@ -157,10 +130,14 @@ column1 = dbc.Col(
     ],
     md=6,
 )
+# END COLUMN 1
+
+# START COLUMN 2
+# This is where the nightly price estimate will be served
 
 column2 = dbc.Col(
     [
-
+        # Column title and format
         html.H1('Predicted Nightly Price',
                 className='mb-5',
                 style={'textAlign': 'center'}),
@@ -172,6 +149,7 @@ column2 = dbc.Col(
                 'fontSize': 25
             }
         ),
+        # Call image function listed below to return image
         html.Div(
             id='image',
             style={
@@ -181,10 +159,12 @@ column2 = dbc.Col(
     ]
 )
 
+# Page layout setup
 layout = dbc.Row([column1, column2])
 
 
 @ app.callback(
+    # Match the columns to the user inputs, make the prediction
     Output('prediction-content', 'children'),
     [Input('room_type', 'value'),
      Input('guests_included', 'value'),
@@ -194,23 +174,37 @@ layout = dbc.Row([column1, column2])
      Input('instant_bookable', 'value'),
      ],
 )
-def predict(room_type, guests_included, review_scores_rating, beds, host_is_superhost, instant_bookable):
+# Prediction function
+def predict(room_type, guests_included, review_scores_rating,
+            beds, host_is_superhost, instant_bookable):
+    ''' 
+    Creates a DataFrame from user inputs, then uses the model imported
+    in line 13 to make a prediction 
+    '''
+    # Create DataFrame with user inputs
+    # Matches the DatFrame format that the model was trained on
     df = pd.DataFrame(
         columns=['room_type', 'guests_included', 'review_scores_rating',
                  'beds', 'host_is_superhost', 'instant_bookable'],
         data=[[room_type, guests_included, review_scores_rating,
                beds, host_is_superhost, instant_bookable]]
     )
+    # Uses the model to make a prediction
     y_pred = model_xgb.predict(df)[0]
+    # Create a high and low prediction range
     y_pred_low = y_pred*.94
     y_pred_high = y_pred*1.06
+    # Return the prediction to the user
     return f'€{y_pred_low:.0f} - €{y_pred_high:.0f}'
 
 
 @app.callback(
+    # Return the image once a user engages with the prediction criteria
     Output('image', 'children'),
     [Input('room_type', 'value')]
 )
+# Image function
 def imgage(room_type):
+    '''Simple image function to return an image to accompany a prediction'''
     if room_type <= 1:
         return html.Img(src='assets/pic.jpg', className='img', style={'height': '500px'})
